@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Golf GPS – Golf Club Marigola</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=yes">
+    <style>
+        /* Stili invariati (grafica ottimizzata per smartphone) */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+            background: linear-gradient(145deg, #0a2f0a 0%, #1e4a1e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+        }
+
+        .card {
+            background: rgba(10, 30, 10, 0.85);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-radius: 36px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 4px 12px rgba(0, 0, 0, 0.5);
+            padding: 24px 18px;
+            max-width: 600px;
+            width: 100%;
+            border: 1px solid rgba(255, 215, 0, 0.25);
+        }
+
+        h1 {
+            color: #f5e56b;
+            text-shadow: 0 2px 4px #0f2f0f;
+            font-weight: 600;
+            font-size: clamp(2rem, 8vw, 2.8rem);
+            letter-spacing: 1px;
+            margin: 0 0 4px 0;
+            text-align: center;
+        }
+
+        .subhead {
+            color: #c5e0b4;
+            font-size: clamp(1rem, 4vw, 1.3rem);
+            margin-bottom: 18px;
+            font-style: italic;
+            text-align: center;
+        }
+
+        #map-container {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+            border-radius: 28px;
+            overflow: hidden;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.7);
+            border: 3px solid #b8860b;
+            background: #1a321a;
+        }
+
+        #mappa {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            pointer-events: none;
+        }
+
+        #canvas-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        #fuori-mappa {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            z-index: 25;
+            background: #b84a4a;
+            color: white;
+            font-weight: bold;
+            padding: 12px 16px;
+            border-radius: 60px;
+            font-size: 1rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            backdrop-filter: blur(4px);
+            border: 1px solid #ffb3b3;
+            text-align: center;
+        }
+
+        .info-panel {
+            background: rgba(20, 45, 20, 0.7);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            border-radius: 36px;
+            padding: 20px 16px;
+            margin: 20px 0 12px 0;
+            box-shadow: inset 0 2px 6px rgba(0,0,0,0.4), 0 8px 12px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,215,0,0.3);
+        }
+
+        #distanza {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .distanza-item {
+            font-size: clamp(2rem, 10vw, 3.5rem);
+            font-weight: 800;
+            color: #1e3a1e;
+            background: linear-gradient(145deg, #f5d742, #e6b422);
+            padding: 20px 15px;
+            border-radius: 60px;
+            box-shadow: 0 6px 0 #9e7800, 0 10px 20px rgba(0,0,0,0.4);
+            border: 2px solid #ffecaa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .distanza-item span {
+            font-weight: 700;
+            background: rgba(255,255,255,0.9);
+            padding: 8px 18px;
+            border-radius: 60px;
+            color: #1f4f2b;
+            font-size: clamp(1.2rem, 6vw, 2rem);
+            box-shadow: inset 0 1px 4px rgba(0,0,0,0.1);
+        }
+
+        #buca-selezionata-nome {
+            display: inline-block;
+            background: #2c5e2e;
+            color: #f5e56b;
+            padding: 8px 24px;
+            border-radius: 60px;
+            font-size: clamp(1.2rem, 5vw, 1.8rem);
+            letter-spacing: 1px;
+            box-shadow: 0 3px 0 #163518;
+            border: 1px solid #f5e56b;
+        }
+
+        .hole-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(65px, 1fr));
+            gap: 12px;
+            justify-content: center;
+            margin: 25px 0 20px;
+        }
+
+        .hole-btn {
+            background: #1e4a1e;
+            border: none;
+            border-radius: 60px;
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            font-size: clamp(1.5rem, 6vw, 2.2rem);
+            font-weight: 800;
+            color: #f5e56b;
+            box-shadow: 0 5px 0 #0a2f0a, 0 6px 12px rgba(0,0,0,0.5);
+            cursor: pointer;
+            transition: all 0.1s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #f5e56b;
+            line-height: 1;
+        }
+
+        .hole-btn.active {
+            background: #f5e56b;
+            color: #1e3a1e;
+            box-shadow: 0 5px 0 #b8860b;
+            transform: scale(1.02);
+            border-color: #ffffff;
+        }
+
+        .hole-btn:hover {
+            background: #2f6b2f;
+            transform: translateY(-2px);
+            box-shadow: 0 7px 0 #0a2f0a, 0 8px 16px rgba(0,0,0,0.6);
+        }
+
+        .hole-btn.active:hover {
+            background: #ffd966;
+        }
+
+        #controls {
+            display: flex;
+            justify-content: center;
+            margin: 10px 0 5px;
+        }
+
+        .gps-btn {
+            background: #f5e56b;
+            border: none;
+            border-radius: 80px;
+            padding: 18px 24px;
+            width: 100%;
+            max-width: 400px;
+            font-size: clamp(1.4rem, 6vw, 2rem);
+            font-weight: 700;
+            color: #0a2f0a;
+            box-shadow: 0 8px 0 #9e7800, 0 10px 20px rgba(0,0,0,0.5);
+            cursor: pointer;
+            transition: all 0.1s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            border: 2px solid #ffecaa;
+            letter-spacing: 1px;
+        }
+
+        .gps-btn:hover {
+            background: #ffdb6d;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 0 #9e7800, 0 14px 24px rgba(0,0,0,0.6);
+        }
+
+        .gps-btn:active {
+            transform: translateY(6px);
+            box-shadow: 0 4px 0 #9e7800;
+        }
+
+        .nota {
+            color: #d4e6b5;
+            font-size: 0.9rem;
+            margin-top: 18px;
+            background: rgba(0,0,0,0.3);
+            padding: 12px 16px;
+            border-radius: 60px;
+            backdrop-filter: blur(4px);
+            text-align: center;
+            border: 1px solid rgba(255,215,0,0.2);
+        }
+
+        .footer-note {
+            color: #e9f0d8;
+            font-size: 0.85rem;
+            margin-top: 15px;
+            text-align: center;
+            opacity: 0.9;
+        }
+
+        @media (max-width: 380px) {
+            .distanza-item {
+                flex-direction: column;
+                padding: 18px 10px;
+            }
+            .hole-selector {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🏌️ GOLF GPS</h1>
+        <div class="subhead">Golf Club Marigola</div>
+
+        <div id="map-container">
+            <div id="fuori-mappa">
+                Sei fuori dalla mappa (posizione non visibile)
+            </div>
+            <img id="mappa" src="mappa.png" alt="Mappa del percorso" onerror="this.onerror=null; alert('ERRORE: immagine \"mappa.png\" non trovata. Inseriscila nella stessa cartella.');">
+            <canvas id="canvas-overlay"></canvas>
+        </div>
+
+        <div class="info-panel">
+            <div id="distanza">
+                <div class="distanza-item">
+                    <span id="buca-selezionata-nome">Buca 1</span>
+                    <span id="distanza-valore">--</span> m
+                </div>
+            </div>
+
+            <div class="hole-selector" id="hole-selector">
+                <!-- generato via JS -->
+            </div>
+
+            <div id="controls">
+                <button id="ottieniPosizione" class="gps-btn">
+                    <span style="font-size:1.8rem;">📡</span> OTTIENI GPS
+                </button>
+            </div>
+        </div>
+        <p class="nota">Il GPS funziona solo su dispositivi con sensore e permessi attivi. Seleziona una buca per vederne la distanza.</p>
+        <div class="footer-note">📍 Il puntino rosso indica la tua posizione.</div>
+    </div>
+
+    <script>
+        (function() {
+            // ---------- DATI COMPLETI BUCHE 1–9 con coordinate reali fornite ----------
+            const holes = [
+                { id: 1, name: 'Buca 1', pixel: { x: 697, y: 66 }, gps: { lat: 44.085465, lon: 9.905788 } },
+                { id: 2, name: 'Buca 2', pixel: { x: 564, y: 114 }, gps: { lat: 44.085274, lon: 9.905111 } },
+                { id: 3, name: 'Buca 3', pixel: { x: 534, y: 251 }, gps: { lat: 44.084788, lon: 9.904977 } },
+                { id: 4, name: 'Buca 4', pixel: { x: 225, y: 221 }, gps: { lat: 44.084914, lon: 9.903399 } },
+                { id: 5, name: 'Buca 5', pixel: { x: 129, y: 104 }, gps: { lat: 44.085120, lon: 9.902907 } }, // fornita in precedenza
+                { id: 6, name: 'Buca 6', pixel: { x: 508, y: 501 }, gps: { lat: 44.083948, lon: 9.904745 } },
+                { id: 7, name: 'Buca 7', pixel: { x: 399, y: 288 }, gps: { lat: 44.083782, lon: 9.905803 } }, // fornita in precedenza
+                { id: 8, name: 'Buca 8', pixel: { x: 645, y: 550 }, gps: { lat: 44.083787, lon: 9.905541 } },
+                { id: 9, name: 'Buca 9', pixel: { x: 627, y: 255 }, gps: { lat: 44.084784, lon: 9.905438 } }
+            ];
+
+            // Punti di controllo per la trasformazione (usiamo 1,5,7 come prima)
+            const controlloIds = [1, 5, 7];
+            const puntiControllo = holes.filter(h => controlloIds.includes(h.id)).map(h => ({
+                pixel: h.pixel,
+                gps: h.gps
+            }));
+
+            // ---------- CALCOLO TRASFORMAZIONE AFFINE (3 punti) ----------
+            function calcolaCoefficienti(punti) {
+                const lat = punti.map(p => p.gps.lat);
+                const lon = punti.map(p => p.gps.lon);
+                const x = punti.map(p => p.pixel.x);
+                const y = punti.map(p => p.pixel.y);
+
+                const M = [
+                    [lat[0], lon[0], 1],
+                    [lat[1], lon[1], 1],
+                    [lat[2], lon[2], 1]
+                ];
+
+                function det3(m) {
+                    return m[0][0]*m[1][1]*m[2][2] + m[0][1]*m[1][2]*m[2][0] + m[0][2]*m[1][0]*m[2][1]
+                         - m[0][2]*m[1][1]*m[2][0] - m[0][1]*m[1][0]*m[2][2] - m[0][0]*m[1][2]*m[2][1];
+                }
+
+                const detM = det3(M);
+                if (Math.abs(detM) < 1e-12) {
+                    console.error("Matrice singolare: punti allineati?");
+                    return null;
+                }
+
+                function sostituisciColonna(m, col, valori) {
+                    const nuova = [
+                        [m[0][0], m[0][1], m[0][2]],
+                        [m[1][0], m[1][1], m[1][2]],
+                        [m[2][0], m[2][1], m[2][2]]
+                    ];
+                    for (let i = 0; i < 3; i++) nuova[i][col] = valori[i];
+                    return nuova;
+                }
+
+                const Mx = sostituisciColonna(M, 0, x);
+                const My = sostituisciColonna(M, 1, x);
+                const Mz = sostituisciColonna(M, 2, x);
+                const a = det3(Mx) / detM;
+                const b = det3(My) / detM;
+                const c = det3(Mz) / detM;
+
+                const Mx_y = sostituisciColonna(M, 0, y);
+                const My_y = sostituisciColonna(M, 1, y);
+                const Mz_y = sostituisciColonna(M, 2, y);
+                const d = det3(Mx_y) / detM;
+                const e = det3(My_y) / detM;
+                const f = det3(Mz_y) / detM;
+
+                return { a, b, c, d, e, f };
+            }
+
+            const coeff = calcolaCoefficienti(puntiControllo);
+            console.log('Coeff trasformazione:', coeff);
+
+            // Conversione GPS → pixel (usa i coefficienti)
+            function gpsToPixel(lat, lon) {
+                if (!coeff) { // fallback lineare (solo se i coeff non sono calcolati)
+                    const p5 = holes.find(h => h.id === 5).pixel;
+                    const p7 = holes.find(h => h.id === 7).pixel;
+                    const g5 = holes.find(h => h.id === 5).gps;
+                    const g7 = holes.find(h => h.id === 7).gps;
+                    const xPerLon = (lon - g5.lon) * (p7.x - p5.x) / (g7.lon - g5.lon) + p5.x;
+                    const yPerLat = (lat - g5.lat) * (p7.y - p5.y) / (g7.lat - g5.lat) + p5.y;
+                    return { x: xPerLon, y: yPerLat };
+                }
+                const x = coeff.a * lat + coeff.b * lon + coeff.c;
+                const y = coeff.d * lat + coeff.e * lon + coeff.f;
+                return { x, y };
+            }
+
+            // ---------- STATO ----------
+            let posizioneCorrente = null;          // { lat, lon }
+            let posizionePixel = null;              // { x, y } in pixel immagine
+            let selectedHoleId = 1;                  // buca predefinita
+
+            // Riferimenti DOM
+            const img = document.getElementById('mappa');
+            const canvas = document.getElementById('canvas-overlay');
+            const ctx = canvas.getContext('2d');
+            const fuoriMappaDiv = document.getElementById('fuori-mappa');
+            const bucaNomeSpan = document.getElementById('buca-selezionata-nome');
+            const distanzaSpan = document.getElementById('distanza-valore');
+
+            // Variabili per il ridimensionamento
+            let scaleX = 1, scaleY = 1;
+
+            // ---------- FUNZIONE DI DISEGNO (solo puntino rosso) ----------
+            function drawOverlay() {
+                if (!ctx || !img) return;
+                const rect = img.getBoundingClientRect();
+                if (rect.width === 0) return;
+
+                canvas.width = rect.width;
+                canvas.height = rect.height;
+                scaleX = img.naturalWidth / rect.width;
+                scaleY = img.naturalHeight / rect.height;
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Disegna solo il puntino rosso (le buche sono già nell'immagine)
+                if (posizionePixel) {
+                    const screenX = posizionePixel.x / scaleX;
+                    const screenY = posizionePixel.y / scaleY;
+
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, 16, 0, 2 * Math.PI);
+                    ctx.fillStyle = '#E63946';
+                    ctx.fill();
+                    ctx.strokeStyle = 'white';
+                    ctx.lineWidth = 4;
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, 8, 0, 2 * Math.PI);
+                    ctx.fillStyle = '#B22222';
+                    ctx.fill();
+                }
+            }
+
+            // ---------- CALCOLO DISTANZA (Haversine) ----------
+            function calcolaDistanzaGPS(lat1, lon1, lat2, lon2) {
+                const R = 6371000;
+                const φ1 = lat1 * Math.PI / 180;
+                const φ2 = lat2 * Math.PI / 180;
+                const Δφ = (lat2 - lat1) * Math.PI / 180;
+                const Δλ = (lon2 - lon1) * Math.PI / 180;
+                const a = Math.sin(Δφ / 2) ** 2 +
+                          Math.cos(φ1) * Math.cos(φ2) *
+                          Math.sin(Δλ / 2) ** 2;
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                return R * c;
+            }
+
+            // ---------- AGGIORNA UI (distanza, nome buca, fuori mappa) ----------
+            function aggiornaDistanzaEtichetta() {
+                const bucaSel = holes.find(h => h.id === selectedHoleId);
+                if (bucaSel) {
+                    bucaNomeSpan.textContent = bucaSel.name;
+                }
+
+                if (!posizioneCorrente || !bucaSel) {
+                    distanzaSpan.textContent = '--';
+                    return;
+                }
+
+                const dist = calcolaDistanzaGPS(
+                    posizioneCorrente.lat, posizioneCorrente.lon,
+                    bucaSel.gps.lat, bucaSel.gps.lon
+                );
+                distanzaSpan.textContent = dist.toFixed(1);
+            }
+
+            // Aggiorna posizione (chiamata dopo nuovo fix GPS)
+            function aggiornaPosizione(lat, lon) {
+                if (img.naturalWidth === 0 || img.naturalHeight === 0) {
+                    alert("Immagine non ancora caricata. Riprova tra un attimo.");
+                    return;
+                }
+
+                posizioneCorrente = { lat, lon };
+                posizionePixel = gpsToPixel(lat, lon);
+
+                const dentroMappa = (
+                    posizionePixel.x >= 0 && posizionePixel.x <= img.naturalWidth &&
+                    posizionePixel.y >= 0 && posizionePixel.y <= img.naturalHeight
+                );
+
+                if (fuoriMappaDiv) {
+                    fuoriMappaDiv.style.display = dentroMappa ? 'none' : 'flex';
+                }
+
+                drawOverlay();
+                aggiornaDistanzaEtichetta();
+            }
+
+            // ---------- COSTRUISCE PULSANTI BUCA ----------
+            const selectorDiv = document.getElementById('hole-selector');
+            holes.sort((a,b) => a.id - b.id).forEach(hole => {
+                const btn = document.createElement('button');
+                btn.className = 'hole-btn' + (hole.id === selectedHoleId ? ' active' : '');
+                btn.textContent = hole.id;
+                btn.dataset.hole = hole.id;
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.hole-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    selectedHoleId = parseInt(this.dataset.hole);
+                    const bucaSel = holes.find(h => h.id === selectedHoleId);
+                    if (bucaSel) bucaNomeSpan.textContent = bucaSel.name;
+                    aggiornaDistanzaEtichetta();
+                    drawOverlay(); // per aggiornare eventuale evidenziazione (non più necessaria, ma pulisce)
+                });
+                selectorDiv.appendChild(btn);
+            });
+
+            // ---------- GESTIONE GPS ----------
+            document.getElementById('ottieniPosizione').addEventListener('click', function() {
+                if (!navigator.geolocation) {
+                    alert('Geolocalizzazione non supportata dal browser.');
+                    return;
+                }
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        const lat = position.coords.latitude;
+                        const lon = position.coords.longitude;
+                        aggiornaPosizione(lat, lon);
+                        alert('✅ Posizione GPS acquisita');
+                    },
+                    function(error) {
+                        let messaggio = 'Errore GPS: ';
+                        switch(error.code) {
+                            case error.PERMISSION_DENIED:
+                                messaggio += 'Permesso negato. Abilita il GPS.';
+                                break;
+                            case error.POSITION_UNAVAILABLE:
+                                messaggio += 'Posizione non disponibile.';
+                                break;
+                            case error.TIMEOUT:
+                                messaggio += 'Timeout. Riprova.';
+                                break;
+                            default:
+                                messaggio += error.message;
+                        }
+                        alert(messaggio);
+                    },
+                    { enableHighAccuracy: true, timeout: 10000 }
+                );
+            });
+
+            // ---------- GESTIONE RIDIMENSIONAMENTO E CARICAMENTO IMMAGINE ----------
+            img.onload = function() {
+                console.log('Immagine caricata');
+                drawOverlay();
+                if (posizioneCorrente) aggiornaDistanzaEtichetta();
+            };
+            if (img.complete) {
+                drawOverlay();
+            }
+            window.addEventListener('resize', function() {
+                drawOverlay();
+            });
+
+            // Inizializza nome buca
+            const initialHole = holes.find(h => h.id === selectedHoleId);
+            if (initialHole) bucaNomeSpan.textContent = initialHole.name;
+        })();
+    </script>
+</body>
+</html>
