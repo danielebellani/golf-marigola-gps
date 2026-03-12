@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Marigola Golf GPS Pro</title>
+    <style>
+        :root {
+            --primary-dark: #0d1a0d;
+            --golf-green: #1a3c1a;
+            --accent-gold: #d4af37;
+            --light-gold: #f5e56b;
+            --glass: rgba(255, 255, 255, 0.1);
+            --safe-red: #ff3b30;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--primary-dark);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Shell per Smartphone */
+        .app-shell {
+            width: 100%;
+            max-width: 500px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        header {
+            text-align: center;
+            padding: 5px 0;
+        }
+
+        header h1 {
+            font-size: 1.1rem;
+            letter-spacing: 2px;
+            margin: 0;
+            color: var(--accent-gold);
+            text-transform: uppercase;
+            font-weight: 900;
+        }
+
+        .location-label {
+            font-size: 0.65rem;
+            opacity: 0.6;
+            letter-spacing: 2px;
+        }
+
+        /* Viewport Mappa */
+        #map-viewport {
+            position: relative;
+            width: 100%;
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+            background: #111;
+        }
+
+        #mappa {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        #canvas-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        /* Pannello Dati Glassmorphism */
+        .data-panel {
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 20px 15px;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+
+        .buca-badge {
+            background: var(--accent-gold);
+            color: var(--primary-dark);
+            padding: 4px 14px;
+            border-radius: 50px;
+            font-weight: 800;
+            font-size: 0.75rem;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+
+        .main-distance {
+            display: flex;
+            justify-content: center;
+            align-items: baseline;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .meters {
+            font-size: 5rem;
+            font-weight: 900;
+            line-height: 1;
+            background: linear-gradient(to bottom, #ffffff 0%, #bbbbbb 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .unit {
+            font-size: 1.1rem;
+            color: var(--accent-gold);
+            font-weight: 600;
+        }
+
+        /* Selettore Buche Ottimizzato Touch */
+        .hole-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .hole-btn {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            aspect-ratio: 1/1;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 700;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hole-btn.active {
+            background: white;
+            color: var(--primary-dark);
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(255,255,255,0.2);
+        }
+
+        /* Pulsante GPS */
+        .gps-trigger {
+            width: 100%;
+            background: var(--accent-gold);
+            border: none;
+            border-radius: 16px;
+            padding: 16px;
+            color: var(--primary-dark);
+            font-weight: 800;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.2s;
+            text-transform: uppercase;
+        }
+
+        .gps-trigger:active {
+            transform: scale(0.97);
+            opacity: 0.9;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            background: var(--safe-red);
+            border-radius: 50%;
+            display: none;
+        }
+
+        .pulse {
+            animation: pulse-animation 2s infinite;
+        }
+
+        @keyframes pulse-animation {
+            0% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 59, 48, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); }
+        }
+
+        #fuori-mappa {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--safe-red);
+            padding: 6px 14px;
+            border-radius: 50px;
+            font-size: 0.7rem;
+            font-weight: 800;
+            display: none;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-shell">
+        <header>
+            <div class="location-label">MARIGOLA GOLF CLUB</div>
+            <h1>Caddie GPS Pro</h1>
+        </header>
+
+        <div id="map-viewport">
+            <div id="fuori-mappa">FUORI AREA DI GIOCO</div>
+            <img id="mappa" src="mappa.png" alt="Campo">
+            <canvas id="canvas-overlay"></canvas>
+        </div>
+
+        <div class="data-panel">
+            <div class="buca-badge" id="buca-label">BUCA 1</div>
+            
+            <div class="main-distance">
+                <span class="meters" id="distanza-valore">--</span>
+                <span class="unit">MT</span>
+            </div>
+
+            <div class="hole-grid" id="hole-selector"></div>
+
+            <button id="ottieniPosizione" class="gps-trigger">
+                <div class="status-dot" id="gps-dot"></div>
+                <span id="gps-text">Attiva GPS Professionale</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            const holes = [
+                { id: 1, name: 'Buca 1', pixel: { x: 697, y: 66 }, gps: { lat: 44.085465, lon: 9.905788 } },
+                { id: 2, name: 'Buca 2', pixel: { x: 564, y: 114 }, gps: { lat: 44.085274, lon: 9.905111 } },
+                { id: 3, name: 'Buca 3', pixel: { x: 534, y: 251 }, gps: { lat: 44.084788, lon: 9.904977 } },
+                { id: 4, name: 'Buca 4', pixel: { x: 225, y: 221 }, gps: { lat: 44.084914, lon: 9.903399 } },
+                { id: 5, name: 'Buca 5', pixel: { x: 129, y: 104 }, gps: { lat: 44.085120, lon: 9.902907 } },
+                { id: 6, name: 'Buca 6', pixel: { x: 508, y: 501 }, gps: { lat: 44.083948, lon: 9.904745 } },
+                { id: 7, name: 'Buca 7', pixel: { x: 399, y: 288 }, gps: { lat: 44.083782, lon: 9.905803 } },
+                { id: 8, name: 'Buca 8', pixel: { x: 645, y: 550 }, gps: { lat: 44.083787, lon: 9.905541 } },
+                { id: 9, name: 'Buca 9', pixel: { x: 627, y: 255 }, gps: { lat: 44.084784, lon: 9.905438 } }
+            ];
+
+            // Coefficienti Affini (ancorati su buche 1, 5, 7)
+            const p1 = holes[0], p5 = holes[4], p7 = holes[6];
+            const M = [[p1.gps.lat, p1.gps.lon, 1], [p5.gps.lat, p5.gps.lon, 1], [p7.gps.lat, p7.gps.lon, 1]];
+            const det3 = (m) => m[0][0]*(m[1][1]*m[2][2]-m[1][2]*m[2][1]) - m[0][1]*(m[1][0]*m[2][2]-m[1][2]*m[2][0]) + m[0][2]*(m[1][0]*m[2][1]-m[1][1]*m[2][0]);
+            const dM = det3(M);
+            const a = det3([[p1.pixel.x, p1.gps.lon, 1], [p5.pixel.x, p5.gps.lon, 1], [p7.pixel.x, p7.gps.lon, 1]]) / dM;
+            const b = det3([[p1.gps.lat, p1.pixel.x, 1], [p5.gps.lat, p5.pixel.x, 1], [p7.gps.lat, p7.pixel.x, 1]]) / dM;
+            const c = det3([[p1.gps.lat, p1.gps.lon, p1.pixel.x], [p5.gps.lat, p5.gps.lon, p5.pixel.x], [p7.gps.lat, p7.gps.lon, p7.pixel.x]]) / dM;
+            const d = det3([[p1.pixel.y, p1.gps.lon, 1], [p5.pixel.y, p5.gps.lon, 1], [p7.pixel.y, p7.gps.lon, 1]]) / dM;
+            const e = det3([[p1.gps.lat, p1.pixel.y, 1], [p5.gps.lat, p5.pixel.y, 1], [p7.gps.lat, p7.pixel.y, 1]]) / dM;
+            const f = det3([[p1.gps.lat, p1.gps.lon, p1.pixel.y], [p5.gps.lat, p5.gps.lon, p5.pixel.y], [p7.gps.lat, p7.gps.lon, p7.pixel.y]]) / dM;
+
+            let posizioneCorrente = null;
+            let selectedHoleId = 1;
+            let watchId = null;
+
+            const img = document.getElementById('mappa');
+            const canvas = document.getElementById('canvas-overlay');
+            const ctx = canvas.getContext('2d');
+            const btnGps = document.getElementById('ottieniPosizione');
+            const gpsText = document.getElementById('gps-text');
+            const gpsDot = document.getElementById('gps-dot');
+
+            function resize() {
+                canvas.width = img.clientWidth;
+                canvas.height = img.clientHeight;
+                render();
+            }
+            window.addEventListener('resize', resize);
+            img.onload = resize;
+
+            function render() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                if (!posizioneCorrente) return;
+
+                const x = a * posizioneCorrente.lat + b * posizioneCorrente.lon + c;
+                const y = d * posizioneCorrente.lat + e * posizioneCorrente.lon + f;
+
+                const fx = (x / 800) * canvas.width;
+                const fy = (y / 600) * canvas.height;
+
+                const out = x < -20 || x > 820 || y < -20 || y > 620;
+                document.getElementById('fuori-mappa').style.display = out ? 'block' : 'none';
+
+                if (!out) {
+                    ctx.shadowBlur = 12;
+                    ctx.shadowColor = "rgba(255,0,0,0.5)";
+                    ctx.beginPath();
+                    ctx.arc(fx, fy, 9, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ff3b30';
+                    ctx.fill();
+                    ctx.strokeStyle = 'white';
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                    ctx.shadowBlur = 0;
+                }
+            }
+
+            function getDist(lat1, lon1, lat2, lon2) {
+                const R = 6371000;
+                const dLat = (lat2-lat1) * Math.PI/180;
+                const dLon = (lon2-lon1) * Math.PI/180;
+                const haversine = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+                return Math.round(R * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1-haversine)));
+            }
+
+            function update() {
+                if (!posizioneCorrente) return;
+                const h = holes.find(x => x.id === selectedHoleId);
+                document.getElementById('distanza-valore').innerText = getDist(posizioneCorrente.lat, posizioneCorrente.lon, h.gps.lat, h.gps.lon);
+                render();
+            }
+
+            function initGps() {
+                if (!navigator.geolocation) return;
+                gpsText.innerText = "Sincronizzazione...";
+                
+                if (watchId) navigator.geolocation.clearWatch(watchId);
+                
+                watchId = navigator.geolocation.watchPosition(
+                    (p) => {
+                        posizioneCorrente = { lat: p.coords.latitude, lon: p.coords.longitude };
+                        gpsText.innerText = "GPS Attivo";
+                        gpsDot.style.display = "block";
+                        gpsDot.classList.add('pulse');
+                        btnGps.style.background = "white";
+                        update();
+                    },
+                    (e) => {
+                        gpsText.innerText = "Riprova GPS";
+                        if(e.code === 1) alert("Abilita la posizione per Safari nelle impostazioni dell'iPhone.");
+                    },
+                    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                );
+            }
+
+            const grid = document.getElementById('hole-selector');
+            holes.forEach(h => {
+                const b = document.createElement('button');
+                b.className = 'hole-btn' + (h.id === 1 ? ' active' : '');
+                b.innerText = h.id;
+                b.onclick = () => {
+                    document.querySelectorAll('.hole-btn').forEach(x => x.classList.remove('active'));
+                    b.classList.add('active');
+                    selectedHoleId = h.id;
+                    document.getElementById('buca-label').innerText = 'BUCA ' + h.id;
+                    update();
+                };
+                grid.appendChild(b);
+            });
+
+            btnGps.addEventListener('click', initGps);
+        })();
+    </script>
+</body>
+</html>
